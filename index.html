@@ -114,7 +114,7 @@ async function syncAuth(path,options={}){try{return await syncRequest(path,optio
 function syncSetConfig(){const url=$('syncUrl')?.value.trim()||'',key=$('syncKey')?.value.trim()||'';if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||key.length<20){alert('Enter your Supabase HTTPS project URL and publishable/anon key. Never enter the service_role secret.');return}if(syncConfig.url!==url||syncConfig.key!==key){syncSession=null;localStorage.removeItem('mtb-sync-session-v1')}syncConfig={url,key,fleet:db.profile?.fleet||'A'};localStorage.setItem(SYNC_CONFIG_KEY,syncJson(syncConfig));syncStatus='Connection settings saved. Sign in to synchronize.';render()}
 async function syncPasswordSignIn(){
  const email=$('syncEmail')?.value.trim().toLowerCase(),password=$('syncPassword')?.value||'';
- if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){alert('Enter a valid email address.');return}
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){alert('Enter a valid email address.');return}
  if(!password){alert('Enter your password.');return}
  try{
   syncStatus='Signing in…';
@@ -127,7 +127,7 @@ async function syncPasswordSignIn(){
 }
 async function syncPasswordReset(){
  const email=$('syncEmail')?.value.trim().toLowerCase();
- if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){alert('Enter your account email address first.');return}
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){alert('Enter your account email address first.');return}
  if(!confirm('Request a password recovery email? This requires working email delivery in Supabase.'))return;
  try{
   await syncRequest('/auth/v1/recover',{method:'POST',body:syncJson({email})});
