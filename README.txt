@@ -1,4 +1,6 @@
-Maran Toolbox Pro v1.6 — browser/PWA, with OPTIONAL Supabase cloud sync.
+Maran Toolbox Pro v1.7 — responsive multi-row navigation (no horizontal scrolling).
+
+Based on v1.6 — browser/PWA, with OPTIONAL Supabase cloud sync.
 
 Publish files (not ZIP) in GitHub repo maran-toolbox-pro, branch main root.
 Existing Marine ETA calculator repository is not affected.
