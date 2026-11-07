@@ -12,3 +12,5 @@ IMPORTANT: Cloud sync is NOT active just by uploading to GitHub. See SETUP_SYNC.
 Keep confidential records out of your public GitHub repo. The browser app code is public; only approved fleet users can access cloud records if RLS is configured correctly.
 
 Version 1.8: Fixed Auto Sync navigation so the settings page opens correctly. Service worker cache version updated.
+
+Version 1.9: email/password login in Auto Sync, session refresh and fleet-filtered event downloads. Read SETUP_SYNC.md.
