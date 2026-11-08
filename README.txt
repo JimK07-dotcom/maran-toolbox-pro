@@ -1,16 +1,20 @@
-Maran Toolbox Pro v1.7 — responsive multi-row navigation (no horizontal scrolling).
+Maran Toolbox Pro v1.12.1 — updated from uploaded v1.12 ZIP (2026-11-08).
 
-Based on v1.6 — browser/PWA, with OPTIONAL Supabase cloud sync.
+Changes:
+- Separate top-level Attendance Plans and Attendance History tabs.
+- Removed the nonfunctional Planned modules section from Home.
+- Superintendent-only interface; fleet membership is administrator-assigned in Supabase.
+- Save My Vessels stores each user’s selected vessels and active vessel in a private Supabase table.
+- Signed-in users retrieve their saved selection on subsequent logins and devices.
+- Existing vessel, maintenance, drydock, attendance, budget and sync data structures retained.
 
-Publish files (not ZIP) in GitHub repo maran-toolbox-pro, branch main root.
-Existing Marine ETA calculator repository is not affected.
+REQUIRED BEFORE DEPLOYMENT:
+1. In Supabase SQL Editor run SETUP_VESSEL_PREFERENCES_v1_12_1.sql.
+2. In Integrations > Data API expose public.user_vessel_preferences (auto-expose is OFF).
+3. Upload all files in this ZIP to GitHub repository root, replacing existing versions.
+4. Reload the app (service-worker cache version was incremented).
+5. Sign in under Auto Sync, open My vessels, select ships and click Save My Vessels.
 
-Includes Attendance Planner, full device backup/restore, copy/share report, local change history, fleet-specific records and optional email-code sign-in and fleet-scoped sync.
-
-IMPORTANT: Cloud sync is NOT active just by uploading to GitHub. See SETUP_SYNC.md and supabase_schema.sql. You must create and configure a Supabase project and approve user accounts. End-to-end cloud sync has not been tested with a live backend.
-
-Keep confidential records out of your public GitHub repo. The browser app code is public; only approved fleet users can access cloud records if RLS is configured correctly.
-
-Version 1.8: Fixed Auto Sync navigation so the settings page opens correctly. Service worker cache version updated.
-
-Version 1.9: email/password login in Auto Sync, session refresh and fleet-filtered event downloads. Read SETUP_SYNC.md.
+Cloud sync needs an active signed-in account, internet, configured Supabase URL/key, correct table exposure and RLS.
+Test with Fleet A/B/C accounts before distributing to colleagues.
+Do not upload company confidential data or secret Supabase service_role keys to the public GitHub repository.
