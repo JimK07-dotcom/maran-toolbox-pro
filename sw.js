@@ -1,8 +1,8 @@
-/* Maran Toolbox Pro v1.12.1 — offline shell and update handling */
-const CACHE = 'maran-toolbox-v1-12-1-20261108';
+/* Maran Toolbox Pro v1.12.2 — offline shell and update handling */
+const CACHE = 'maran-toolbox-v1-12-2-20261108';
 const ASSETS = [
   './', './index.html', './eta.html', './mtm-logo.png',
-  './maran-morpheus.jpg', './icon-192.png', './icon-512.png',
+  './marine-team-emblem.png', './icon-192.png', './icon-512.png',
   './manifest.webmanifest'
 ];
 
