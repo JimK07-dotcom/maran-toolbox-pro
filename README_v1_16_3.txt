@@ -1,0 +1,1 @@
+v1.16.3 Paints Overview: vessel dropdown; fleet matching uses Supabase vessel_directory with signed-in user saved vessels fallback; unassigned vessel warning. No SQL/data import required. Assign other fleet vessels under Settings > Manage Fleet.
