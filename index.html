@@ -40,7 +40,7 @@
 </style></head><body><header><div class="wrap"><img src="mtm-logo.png" class="brand" alt="MTM logo"><div class="brandtext"><strong>Maran Toolbox Pro</strong><small>Fleet tools · Vessel history · Offline</small></div><div class="header-actions"><button type="button" class="header-home" onclick="go('home')">⌂ Home</button><img class="header-emblem" src="marine-team-emblem.png" alt="MTM Marine Team"><span id="headVessel" class="tag">Set up</span><button id="headerSync" class="header-btn" type="button" onclick="headerSyncClick()" title="Synchronize now">☁ Sync</button><button id="headerBell" class="header-btn bell-btn" type="button" onclick="headerBellClick()" title="View colleague updates">🔔 <span id="headerBellCount" class="bell-count hidden">0</span></button></div></div></header><main class="shell"><div id="tabs" class="tabs hidden"></div><div id="pageToolbar" class="page-toolbar hidden"></div><div id="app"></div><div id="reportModal" class="reportmodal hidden" role="dialog" aria-modal="true" aria-label="Copy or share report"><div class="reportbox"><div class="reporthead"><h2>Copy / Share Report</h2><button class="btn outline" onclick="closeReport()">✕ Close</button></div><p class="muted small">Review the message before sharing. Copy it to WhatsApp, WeChat or email, or use your phone’s Share menu.</p><div class="field"><label>Report content</label><textarea id="reportText" rows="16" spellcheck="false"></textarea></div><div class="reportactions"><button class="btn primary" onclick="copyReport()">📋 Copy as Message</button><button class="btn" onclick="shareReport()">↗ Share Message</button><button class="btn outline" onclick="printReportText()">Print message</button></div><p class="muted small" id="reportFeedback" aria-live="polite"></p></div></div><div class="footer">Created by <b>Capt. Dimitrios G. Karakasilis</b> · Marine Superintendent<br>Prototype · Locally stored records · Not an official MTM system</div></main><input id="importFile" type="file" accept=".json,.mtb,application/json" hidden><script>
 // Fleet assignments transcribed from the user-supplied MTM fleet roster (Nov 2026).
 const MTM_CONFIRMED_FLEETS={"MARAN ARCTURUS":"A","MARAN ARTEMIS":"A","MARAN ATALANTA":"A","MARAN HELEN":"A","MARAN HERCULES":"A","MARAN HERMIONE":"A","MARAN HOMER":"A","MARAN PENELOPE":"A","MARAN PYTHIA":"A","MARAN DANAE":"A","MARAN DIONE":"A","MARAN MORPHEUS":"A","MARAN MYRTO":"A","MARAN ASTERIA":"A","MARAN AURA":"A","MARIA A. ANGELICOUSSIS":"A","ANTONIS I. ANGELICOUSSIS":"A","MARAN AJAX":"B","MARAN ANTIOPE":"B","MARAN APHRODITE":"B","MARAN ARES":"B","MARAN ARETE":"B","MARAN ARIADNE":"B","MARAN ASPASIA":"B","MARAN ATLAS":"B","MARAN TAURUS":"B","MARAN ORPHEUS":"B","MARAN PHOEBE":"B","MARAN SOLON":"B","MARAN MARS":"B","MARAN MIRA":"B","MARAN MENELAUS":"B","MARAN MELINA":"B","SOPHIA":"B","MARAN APOLLO":"C","MARAN ATHENA":"C","MARAN CLEO":"C","MARAN HELIOS":"C","MARAN HERMES":"C","MARAN LEO":"C","MARAN LIBRA":"C","MARAN LYNX":"C","MARAN PLATO":"C","MARAN POSEIDON":"C","MARAN THALEIA":"C","MARAN THETIS":"C","MARAN MYRSINI":"C","MARAN MYRON":"C","MARAN MAIA":"C","MARAN MUSE":"C"};
-function mtmCanonicalVessel(v){const x=String(v||'').trim().toUpperCase().replace(/\s+/g,' ');return ({'MARAN SOPHIA':'SOPHIA','MARAN ANTONIS I.A.':'ANTONIS I. ANGELICOUSSIS','ANTONIS I.A.':'ANTONIS I. ANGELICOUSSIS','MARAN ANTONIS I. ANGELICOUSSIS':'ANTONIS I. ANGELICOUSSIS','MARAN MARIA A. ANGELICOUSSIS':'MARIA A. ANGELICOUSSIS'})[x]||x}
+function mtmCanonicalVessel(v){const x=String(v||'').trim().toUpperCase().replace(/\s+/g,' ');return ({'MARAN SOPHIA':'SOPHIA','MARAN ANTONIS I.A.':'ANTONIS I. ANGELICOUSSIS','ANTONIS I.A.':'ANTONIS I. ANGELICOUSSIS','MARAN ANTONIS I. ANGELICOUSSIS':'ANTONIS I. ANGELICOUSSIS','MARAN MARIA A. ANGELICOUSSIS':'MARIA A. ANGELICOUSSIS','ANTONIS IA':'ANTONIS I. ANGELICOUSSIS','MARIA AA':'MARIA A. ANGELICOUSSIS','DANAE':'MARAN DANAE','DIONE':'MARAN DIONE'})[x]||x}
 const FLEET=["ANTONIS I. ANGELICOUSSIS", "MARAN AJAX", "MARAN ANTIOPE", "MARAN APHRODITE", "MARAN APOLLO", "MARAN ARCTURUS", "MARAN ARES", "MARAN ARETE", "MARAN ARIADNE", "MARAN ARTEMIS", "MARAN ASPASIA", "MARAN ASTERIA", "MARAN ATALANTA", "MARAN ATHENA", "MARAN ATLAS", "MARAN AURA", "MARAN CLEO", "MARAN DANAE", "MARAN DIONE", "MARAN HELEN", "MARAN HELIOS", "MARAN HERCULES", "MARAN HERMES", "MARAN HERMIONE", "MARAN HOMER", "MARAN LEO", "MARAN LIBRA", "MARAN LYNX", "MARAN MAIA", "MARAN MARS", "MARAN MELINA", "MARAN MENELAUS", "MARAN MIRA", "MARAN MORPHEUS", "MARAN MUSE", "MARAN MYRON", "MARAN MYRSINI", "MARAN MYRTO", "MARAN ORPHEUS", "MARAN PENELOPE", "MARAN PHOEBE", "MARAN PLATO", "MARAN POSEIDON", "MARAN PYTHIA", "MARAN SOLON", "MARAN TAURUS", "MARAN THALEIA", "MARAN THETIS", "MARIA A. ANGELICOUSSIS", "SOPHIA"];
 // Fleet directory: shared Supabase source with offline cached fallback.
 const FLEET_DIR_KEY='mtm-fleet-directory-v153';
@@ -114,11 +114,11 @@ async function paintHistoricalLoad(options={}){
  try{const rows=await syncAuth('/rest/v1/paint_historical_financials?select=vessel,year,kind,amount&limit=1000');paintCloudRows=rows;paintCloudLoaded=true;
  db.paintJotun=db.paintJotun||[];db.budgets=db.budgets||[];
  for(const r of rows){if(r.kind==='actual'){
- let x=db.paintJotun.find(x=>x.vessel===r.vessel&&Number(x.year)===r.year);
+ let x=db.paintJotun.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(r.vessel)&&Number(x.year)===r.year);
  if(!x)db.paintJotun.push({id:id(),vessel:r.vessel,year:r.year,months:12,cost:Number(r.amount),reference:'Imported annual cost · 2022–2026',updated:now()});
  else if(x.reference==='Imported annual cost · 2022–2026')x.cost=Number(r.amount);
  }else if(r.kind==='budget'){
- let x=db.budgets.find(x=>x.vessel===r.vessel&&Number(x.year)===r.year&&x.category==='Paints');
+ let x=db.budgets.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(r.vessel)&&Number(x.year)===r.year&&x.category==='Paints');
  if(!x)db.budgets.push({id:id(),vessel:r.vessel,year:r.year,category:'Paints',approved:String(r.amount),remarks:'Imported from Paints Budget 2027 workbook',updated:now()});
  else if(x.remarks==='Imported from Paints Budget 2027 workbook')x.approved=String(r.amount);
  }}save();paintImportStatus=`Loaded ${rows.length} database figures`;render();return rows.length;
@@ -151,7 +151,7 @@ function paintOverview(){
  const records=paintCloudLoaded?paintCloudRows:[];
  const index=new Map(records.map(r=>[`${mtmCanonicalVessel(r.vessel)}|${r.year}|${r.kind}`,Number(r.amount)]));
  const names=[...new Set([...Object.keys(MTM_CONFIRMED_FLEETS),...PAINTS_HISTORICAL_IMPORT.map(r=>mtmCanonicalVessel(r.vessel)),...records.map(r=>mtmCanonicalVessel(r.vessel))])].sort((a,b)=>a.localeCompare(b));
- const selectedFleet=['A','B','C'].includes(window.paintFleetFilter)?window.paintFleetFilter:((['A','B','C'].includes(assignedFleetLabel()))?assignedFleetLabel():'A');
+ const selectedFleet=['ALL','A','B','C'].includes(window.paintFleetFilter)?window.paintFleetFilter:((['A','B','C'].includes(assignedFleetLabel()))?assignedFleetLabel():'A');
  const directory=typeof fleetDirectory!=='undefined'?fleetDirectory:{};
  const normalized=mtmCanonicalVessel;
  const directoryByName=new Map(Object.entries(directory).map(([name,info])=>[mtmCanonicalVessel(name),info]));
@@ -165,7 +165,7 @@ function paintOverview(){
   if(['A','B','C'].includes(assigned)&&myVessels.has(normalized(v)))return assigned;
   return '';
  };
- const fleetNames=names.filter(v=>vesselFleet(v)===selectedFleet);
+ const fleetNames=names.filter(v=>selectedFleet==='ALL'||vesselFleet(v)===selectedFleet);
  const chosen=window.paintSelectedVessel||'';
  if(chosen&&!fleetNames.includes(chosen))window.paintSelectedVessel='';
  const matches=fleetNames.filter(v=>!window.paintSelectedVessel||v===window.paintSelectedVessel);
@@ -178,10 +178,10 @@ function paintOverview(){
  <p>Historical actuals 2022–2026, approved 2026 budgets and entered 2027 budgets. Figures are read from the shared Supabase historical financials table.</p>
  <button class="btn" onclick="window.paintSection='paints';render()">← Paints Budget</button>
  <button class="btn" onclick="paintOverviewCsv()">Export overview CSV</button>
- <div class="formgrid"><div class="field"><label>Vessel</label><select onchange="window.paintSelectedVessel=this.value;render()"><option value="">All vessels in selected fleet</option>${fleetNames.map(v=>`<option value="${esc(v)}" ${window.paintSelectedVessel===v?'selected':''}>${esc(v)}</option>`).join('')}</select></div>
- <div class="field"><label>Fleet</label><select onchange="window.paintFleetFilter=this.value;window.paintSelectedVessel='';render()">${[['A','Fleet A'],['B','Fleet B'],['C','Fleet C']].map(([v,t])=>`<option value="${v}" ${selectedFleet===v?'selected':''}>${t}</option>`).join('')}</select></div></div>
+ <div class="formgrid"><div class="field"><label>Vessel</label><select onchange="window.paintSelectedVessel=this.value;render()"><option value="">${selectedFleet==='ALL'?'All vessels':'All vessels in selected fleet'}</option>${fleetNames.map(v=>`<option value="${esc(v)}" ${window.paintSelectedVessel===v?'selected':''}>${esc(v)}</option>`).join('')}</select></div>
+ <div class="field"><label>Fleet</label><select onchange="window.paintFleetFilter=this.value;window.paintSelectedVessel='';render()">${[['ALL','All vessels'],['A','Fleet A'],['B','Fleet B'],['C','Fleet C']].map(([v,t])=>`<option value="${v}" ${selectedFleet===v?'selected':''}>${t}</option>`).join('')}</select></div></div>
  ${paintCloudError?`<div class="notice warning">${esc(paintCloudError)}. Cached figures are displayed if available.</div>`:(!paintCloudLoaded?'<div class="notice">Loading shared figures automatically when connected…</div>':'')}
- ${unassigned.length?`<div class="notice warning">${unassigned.length} historical/imported vessels have no confirmed fleet assignment and are not included in Fleet A/B/C totals. Assign remaining historical vessels under Settings → Manage Fleet. The confirmed fleet roster is used for current vessels.</div>`:''}
+ ${selectedFleet!=='ALL'&&unassigned.length?`<div class="notice warning">${unassigned.length} historical/imported vessels have no confirmed fleet assignment and are not included in Fleet A/B/C totals. Assign remaining historical vessels under Settings → Manage Fleet. The confirmed fleet roster is used for current vessels.</div>`:''}
  ${matches.length===0?'<div class="notice warning">No vessels have a confirmed assignment to this fleet. Check Settings → Manage Fleet and your saved vessel preferences; no financial data has been deleted.</div>':''}
  <p><b>${matches.length}</b> vessels · blank means no recorded value; zero means an actual recorded zero.</p>
  <div style="overflow-x:auto;max-height:72vh"><table style="min-width:1150px;width:100%;border-collapse:collapse"><thead style="position:sticky;top:0;background:#123b51;z-index:1"><tr><th>Vessel</th><th>2022 Actual</th><th>2023 Actual</th><th>2024 Actual</th><th>2025 Actual</th><th>2026 Actual</th><th>2026 Budget</th><th>2027 Budget</th><th>Details</th></tr></thead><tbody>
@@ -191,10 +191,15 @@ function paintOverview(){
 
 function paintOverviewCsv(){
  const fields=[[2022,'actual'],[2023,'actual'],[2024,'actual'],[2025,'actual'],[2026,'actual'],[2026,'budget'],[2027,'budget']];
- const map=new Map(paintCloudRows.map(r=>[`${r.vessel.trim().toUpperCase()}|${r.year}|${r.kind}`,r.amount]));
- const names=[...new Set([...PAINTS_HISTORICAL_IMPORT.map(r=>r.vessel),...paintCloudRows.map(r=>r.vessel)])].sort();
- const csv=[['Vessel',...fields.map(([y,k])=>`${y} ${k}`)],...names.map(v=>[v,...fields.map(([y,k])=>map.get(`${v.trim().toUpperCase()}|${y}|${k}`)??'')])].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
- const a=document.createElement('a'),u=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.href=u;a.download='MTM_Paints_All_Vessels_2022_2027.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+ const normalized=mtmCanonicalVessel;
+ const map=new Map(paintCloudRows.map(r=>[`${normalized(r.vessel)}|${r.year}|${r.kind}`,r.amount]));
+ const all=[...new Set([...Object.keys(MTM_CONFIRMED_FLEETS),...PAINTS_HISTORICAL_IMPORT.map(r=>normalized(r.vessel)),...paintCloudRows.map(r=>normalized(r.vessel))])].sort();
+ const f=window.paintFleetFilter||assignedFleetLabel()||'A';
+ const directoryByName=new Map(Object.entries(fleetDirectory||{}).map(([n,v])=>[normalized(n),v]));
+ const names=all.filter(v=>f==='ALL'||(String(directoryByName.get(v)?.fleet||MTM_CONFIRMED_FLEETS[v]||'').replace(/^FLEET\s*/i,'').toUpperCase()===f));
+ const selected=window.paintSelectedVessel;const visible=selected?names.filter(v=>v===selected):names;
+ const csv=[['Vessel',...fields.map(([y,k])=>`${y} ${k}`)],...visible.map(v=>[v,...fields.map(([y,k])=>map.get(`${v}|${y}|${k}`)??'')])].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ const a=document.createElement('a'),u=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.href=u;a.download='MTM_Paints_Overview.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
 }
 function paintRecords(){db.paintJotun=db.paintJotun||[];db.paintDeliveries=db.paintDeliveries||[];return db.paintJotun}
 function openPaintsBudget(){window.paintSection='paints';render();if(syncSession&&navigator.onLine)paintHistoricalLoad({silent:true});}
@@ -210,11 +215,11 @@ function budgetPage(){
  const v=db.active,y=Number(window.paintYear||new Date().getFullYear()+1);
  const years=Array.from({length:5},(_,i)=>y-4+i);
  const jot=paintRecords(), deliveries=db.paintDeliveries;
- const yrRows=years.map(yr=>{let r=jot.find(x=>x.vessel===v&&Number(x.year)===yr);const cloud=paintCloudRows.find(x=>x.vessel===v&&Number(x.year)===yr&&x.kind==='actual');if(cloud)r={cost:Number(cloud.amount),months:12};return {yr,r,annual:r?(Number(r.cost)/Number(r.months)*12):null}});
+ const yrRows=years.map(yr=>{let r=jot.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===yr);const cloud=paintCloudRows.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===yr&&x.kind==='actual');if(cloud)r={cost:Number(cloud.amount),months:12};return {yr,r,annual:r?(Number(r.cost)/Number(r.months)*12):null}});
  const known=yrRows.filter(x=>x.annual!==null),avg=known.length?known.reduce((a,x)=>a+x.annual,0)/known.length:null;
- const budget={...(db.budgets.find(x=>x.vessel===v&&Number(x.year)===y&&x.category==='Paints')||{})};const cloudBudget=paintCloudRows.find(x=>x.vessel===v&&Number(x.year)===y&&x.kind==='budget');if(cloudBudget)budget.approved=String(cloudBudget.amount);
- const spent=deliveries.filter(x=>x.vessel===v&&Number(x.year)===y).reduce((a,x)=>a+Number(x.cost),0);
- const curr=jot.find(x=>x.vessel===v&&Number(x.year)===y)||{};
+ const budget={...(db.budgets.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===y&&x.category==='Paints')||{})};const cloudBudget=paintCloudRows.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===y&&x.kind==='budget');if(cloudBudget)budget.approved=String(cloudBudget.amount);
+ const spent=deliveries.filter(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===y).reduce((a,x)=>a+Number(x.cost),0);
+ const curr=jot.find(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===y)||{};
  const m=n=>Number(n).toLocaleString('en-US',{style:'currency',currency:'USD'});
  return `<section class="panel"><span class="eyebrow">PAINTS BUDGET · USD</span><h1>${esc(v)}</h1>
  <button class="btn" onclick="window.paintSection='overview';render()">← All vessels overview</button>
@@ -230,7 +235,7 @@ function budgetPage(){
  <hr class="divider"><h3>Paint Supplies · Monitoring only</h3><p class="muted">Individual deliveries are separate from Jotun's official actuals and are never added to them.</p>
  <div class="stats"><div class="stat"><span class="small muted">Recorded ${y} deliveries</span><strong>${m(spent)}</strong></div><div class="stat"><span class="small muted">Supply-based estimated balance</span><strong>${budget.approved!==undefined&&budget.approved!==''?m(Number(budget.approved)-spent):'No approved budget'}</strong></div></div>
  <form onsubmit="paintSaveDelivery(event)"><div class="formgrid"><div class="field"><label>Supply date</label><input type="date" name="date" required></div><div class="field"><label>Port</label><input name="port" required></div><div class="field"><label>Quantity</label><input name="qty" type="number" min="0.001" step="any" required></div><div class="field"><label>Unit</label><input name="unit" placeholder="Litres / kg / cans" required></div><div class="field"><label>Total cost (USD)</label><input name="cost" type="number" min="0" step="0.01" required></div></div><button class="btn primary">Review and save delivery</button></form>
- ${deliveries.filter(x=>x.vessel===v&&Number(x.year)===y).map(x=>`<div class="listrow"><div><b>${esc(x.date)} · ${esc(x.port)}</b><small>${esc(x.qty)} ${esc(x.unit)} · ${m(x.cost)}</small></div></div>`).join('')}
+ ${deliveries.filter(x=>mtmCanonicalVessel(x.vessel)===mtmCanonicalVessel(v)&&Number(x.year)===y).map(x=>`<div class="listrow"><div><b>${esc(x.date)} · ${esc(x.port)}</b><small>${esc(x.qty)} ${esc(x.unit)} · ${m(x.cost)}</small></div></div>`).join('')}
  <p class="muted">Historical costs and budgets imported through the one-time facility are synchronized through Supabase. New manually entered paint figures and supplies still require separate cloud synchronization support.</p></section>`;
 }
 function paintSaveJotun(e){e.preventDefault();const f=new FormData(e.target),year=Number(f.get('year')),months=Number(f.get('months')),cost=Number(f.get('cost'));if(!Number.isFinite(cost)||cost<0)return;const annual=cost/months*12;const old=paintRecords().find(x=>x.vessel===db.active&&x.year===year);if(!confirm(`Confirm Jotun actual\nVessel: ${db.active}\nYear: ${year}\nPeriod: ${months} months\nReported USD: ${cost.toFixed(2)}\nAnnualized USD: ${annual.toFixed(2)}\n${old?'This will replace the previous figure.':''}`))return;const prev=old?{...old}:null;if(old){Object.assign(old,{months,cost,reference:String(f.get('reference')),updated:now()})}else db.paintJotun.push({id:id(),vessel:db.active,year,months,cost,reference:String(f.get('reference')),updated:now()});logChange('Jotun actual',{vessel:db.active,year,cost,months},'Jotun reported cost manually entered',prev);save();render()}
