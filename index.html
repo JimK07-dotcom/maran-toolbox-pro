@@ -26,6 +26,17 @@
 .page-toolbar strong{font-size:19px;text-align:center}
 .page-toolbar.hidden{display:none!important}
 @media(max-width:600px){.header-emblem{width:42px;height:42px}.header-home{padding:8px;font-size:14px}.nav-group-buttons button{font-size:15px!important;min-height:52px!important}.page-toolbar strong{font-size:15px}.page-toolbar{gap:5px;padding:8px}.page-toolbar button{padding:8px!important}}
+</style><style id="mtm-year-picker-style">
+.mtm-year-trigger{width:100%;text-align:left;cursor:pointer;background:#123a50;color:#fff;border:1px solid #53758a;border-radius:8px;padding:12px;font:inherit;min-height:42px}
+.mtm-year-dialog{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:15px}
+.mtm-year-box{width:min(550px,96vw);max-height:90vh;overflow:auto;background:#102f43;border:1px solid #547789;border-radius:16px;padding:20px;color:#fff;box-shadow:0 20px 80px #0008}
+.mtm-year-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}
+.mtm-year-head button,.mtm-year-nav button{cursor:pointer;background:#23546a;color:white;border:1px solid #648b9b;border-radius:8px;padding:10px}
+.mtm-year-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.mtm-year-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.mtm-year-grid button{cursor:pointer;padding:12px 4px;border:1px solid #456c7f;border-radius:8px;background:#1c465d;color:white;font:inherit}
+.mtm-year-grid button[aria-current="true"]{background:#23b9b2;color:#061c28;font-weight:bold}
+.mtm-year-grid button:focus-visible,.mtm-year-trigger:focus-visible{outline:3px solid #f9c75e}
 </style></head><body><header><div class="wrap"><img src="mtm-logo.png" class="brand" alt="MTM logo"><div class="brandtext"><strong>Maran Toolbox Pro</strong><small>Fleet tools · Vessel history · Offline</small></div><div class="header-actions"><button type="button" class="header-home" onclick="go('home')">⌂ Home</button><img class="header-emblem" src="marine-team-emblem.png" alt="MTM Marine Team"><span id="headVessel" class="tag">Set up</span><button id="headerSync" class="header-btn" type="button" onclick="headerSyncClick()" title="Synchronize now">☁ Sync</button><button id="headerBell" class="header-btn bell-btn" type="button" onclick="headerBellClick()" title="View colleague updates">🔔 <span id="headerBellCount" class="bell-count hidden">0</span></button></div></div></header><main class="shell"><div id="tabs" class="tabs hidden"></div><div id="pageToolbar" class="page-toolbar hidden"></div><div id="app"></div><div id="reportModal" class="reportmodal hidden" role="dialog" aria-modal="true" aria-label="Copy or share report"><div class="reportbox"><div class="reporthead"><h2>Copy / Share Report</h2><button class="btn outline" onclick="closeReport()">✕ Close</button></div><p class="muted small">Review the message before sharing. Copy it to WhatsApp, WeChat or email, or use your phone’s Share menu.</p><div class="field"><label>Report content</label><textarea id="reportText" rows="16" spellcheck="false"></textarea></div><div class="reportactions"><button class="btn primary" onclick="copyReport()">📋 Copy as Message</button><button class="btn" onclick="shareReport()">↗ Share Message</button><button class="btn outline" onclick="printReportText()">Print message</button></div><p class="muted small" id="reportFeedback" aria-live="polite"></p></div></div><div class="footer">Created by <b>Capt. Dimitrios G. Karakasilis</b> · Marine Superintendent<br>Prototype · Locally stored records · Not an official MTM system</div></main><input id="importFile" type="file" accept=".json,.mtb,application/json" hidden><script>
 const FLEET=["MARAN AJAX", "MARAN ANTIOPE", "MARAN APHRODITE", "MARAN APOLLO", "MARAN ARCTURUS", "MARAN ARES", "MARAN ARETE", "MARAN ARIADNE", "MARAN ARTEMIS", "MARAN ASPASIA", "MARAN ASTERIA", "MARAN ATALANTA", "MARAN ATHENA", "MARAN ATLAS", "MARAN AURA", "MARAN CLEO", "MARAN DANAE", "MARAN DIONE", "MARAN HELEN", "MARAN HELIOS", "MARAN HERCULES", "MARAN HERMES", "MARAN HERMIONE", "MARAN HOMER", "MARAN LEO", "MARAN LIBRA", "MARAN LYNX", "MARAN MAIA", "MARAN MARS", "MARAN MELINA", "MARAN MENELAUS", "MARAN MIRA", "MARAN MORPHEUS", "MARAN MUSE", "MARAN MYRON", "MARAN MYRSINI", "MARAN MYRTO", "MARAN ORPHEUS", "MARAN PENELOPE", "MARAN PHOEBE", "MARAN PLATO", "MARAN POSEIDON", "MARAN PYTHIA", "MARAN SOLON", "MARAN TAURUS", "MARAN THALEIA", "MARAN THETIS", "MARIA A. ANGELICOUSSIS", "SOPHIA"];
 // Fleet directory: shared Supabase source with offline cached fallback.
@@ -137,7 +148,7 @@ function paintOverview(){
  const records=paintCloudLoaded?paintCloudRows:[];
  const index=new Map(records.map(r=>[`${String(r.vessel).trim().toUpperCase()}|${r.year}|${r.kind}`,Number(r.amount)]));
  const names=[...new Set([...PAINTS_HISTORICAL_IMPORT.map(r=>r.vessel),...records.map(r=>r.vessel)])].sort((a,b)=>a.localeCompare(b));
- const selectedFleet=window.paintFleetFilter||'all',searchText=(window.paintSearch||'').toLowerCase();
+ const selectedFleet=['A','B','C'].includes(window.paintFleetFilter)?window.paintFleetFilter:((['A','B','C'].includes(assignedFleetLabel()))?assignedFleetLabel():'A'),searchText=(window.paintSearch||'').toLowerCase();
  const directory=typeof fleetDirectory!=='undefined'?fleetDirectory:{};
  const matches=names.filter(v=>{
   if(!v.toLowerCase().includes(searchText))return false;
@@ -154,7 +165,7 @@ function paintOverview(){
  <button class="btn" onclick="window.paintSection='paints';render()">← Paints Budget</button>
  <button class="btn" onclick="paintOverviewCsv()">Export overview CSV</button>
  <div class="formgrid"><div class="field"><label>Vessel search</label><input placeholder="Search vessel" value="${esc(window.paintSearch||'')}" oninput="window.paintSearch=this.value;render()"></div>
- <div class="field"><label>Fleet</label><select onchange="window.paintFleetFilter=this.value;render()">${[['all','All vessels'],['mine','My assigned vessels'],['A','Fleet A'],['B','Fleet B'],['C','Fleet C']].map(([v,t])=>`<option value="${v}" ${selectedFleet===v?'selected':''}>${t}</option>`).join('')}</select></div></div>
+ <div class="field"><label>Fleet</label><select onchange="window.paintFleetFilter=this.value;render()">${[['A','Fleet A'],['B','Fleet B'],['C','Fleet C']].map(([v,t])=>`<option value="${v}" ${selectedFleet===v?'selected':''}>${t}</option>`).join('')}</select></div></div>
  ${paintCloudError?`<div class="notice warning">${esc(paintCloudError)}. Cached figures are displayed if available.</div>`:(!paintCloudLoaded?'<div class="notice">Loading shared figures automatically when connected…</div>':'')}
  <p><b>${matches.length}</b> vessels · blank means no recorded value; zero means an actual recorded zero.</p>
  <div style="overflow-x:auto;max-height:72vh"><table style="min-width:1150px;width:100%;border-collapse:collapse"><thead style="position:sticky;top:0;background:#123b51;z-index:1"><tr><th>Vessel</th><th>2022 Actual</th><th>2023 Actual</th><th>2024 Actual</th><th>2025 Actual</th><th>2026 Actual</th><th>2026 Budget</th><th>2027 Budget</th><th>Details</th></tr></thead><tbody>
@@ -536,4 +547,38 @@ window.addEventListener('online',()=>{if(syncSession&&wirePending().length)wireF
 // All date inputs use the browser's native calendar. Clicking the field opens it where supported.
 document.addEventListener('click',e=>{const el=e.target;if(el instanceof HTMLInputElement&&el.type==='date'&&typeof el.showPicker==='function'){try{el.showPicker()}catch{}}});
 
+
+/* Shared year picker: applies to year dropdowns and numeric year fields, 2000–2100. */
+let mtmYearTarget=null,mtmYearDecade=2020;
+function mtmYearModalClose(){const el=document.getElementById('mtm-year-dialog');if(el)el.remove();mtmYearTarget=null;}
+function mtmYearModalDraw(){const dlg=document.getElementById('mtm-year-dialog');if(!dlg)return;
+ const selected=Number(mtmYearTarget?.value)||new Date().getFullYear(),start=mtmYearDecade;
+ dlg.querySelector('.mtm-year-range').textContent=start+'–'+Math.min(2100,start+11);
+ dlg.querySelector('.mtm-year-prev').disabled=start<=2000;
+ dlg.querySelector('.mtm-year-next').disabled=start+12>2100;
+ dlg.querySelector('.mtm-year-grid').innerHTML=Array.from({length:12},(_,i)=>start+i).filter(y=>y<=2100).map(y=>`<button type="button" data-year="${y}" aria-current="${y===selected}">${y}</button>`).join('');
+}
+function mtmYearModalOpen(target){mtmYearTarget=target;const selected=Number(target.value)||new Date().getFullYear();mtmYearDecade=Math.max(2000,Math.min(2096,2000+Math.floor((selected-2000)/12)*12));
+ const dlg=document.createElement('div');dlg.className='mtm-year-dialog';dlg.id='mtm-year-dialog';dlg.setAttribute('role','dialog');dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-label','Select year');
+ dlg.innerHTML='<div class="mtm-year-box"><div class="mtm-year-head"><strong>Select year (2000–2100)</strong><button type="button" class="mtm-year-close">✕ Close</button></div><div class="mtm-year-nav"><button type="button" class="mtm-year-prev">← Earlier</button><strong class="mtm-year-range"></strong><button type="button" class="mtm-year-next">Later →</button></div><div class="mtm-year-grid"></div></div>';
+ document.body.appendChild(dlg);dlg.addEventListener('click',e=>{if(e.target===dlg||e.target.closest('.mtm-year-close')){mtmYearModalClose();return;}
+ if(e.target.closest('.mtm-year-prev')){mtmYearDecade=Math.max(2000,mtmYearDecade-12);mtmYearModalDraw();return;}
+ if(e.target.closest('.mtm-year-next')){mtmYearDecade=Math.min(2096,mtmYearDecade+12);mtmYearModalDraw();return;}
+ const btn=e.target.closest('[data-year]');if(btn){const target=mtmYearTarget;target.value=btn.dataset.year;mtmYearModalClose();target.dispatchEvent(new Event('input',{bubbles:true}));target.dispatchEvent(new Event('change',{bubbles:true}));}}
+ );dlg.addEventListener('keydown',e=>{if(e.key==='Escape')mtmYearModalClose();});mtmYearModalDraw();dlg.querySelector('.mtm-year-close').focus();}
+function mtmIsYearField(el){if(el.dataset.mtmYearProcessed)return false;
+ const label=el.closest('.field')?.querySelector('label')?.textContent?.trim().toLowerCase()||'';
+ if(el.tagName==='SELECT'){const opts=[...el.options];return opts.length>=20&&opts.filter(o=>/^\d{4}$/.test(o.value)).length>=20;}
+ if(el.tagName==='INPUT'&&el.type==='number'){return (el.name==='year'||/\byear\b/.test(label)||/year/i.test(el.id))&&Number(el.max)>=2100;}
+ return false;}
+function mtmUpgradeYearFields(){document.querySelectorAll('#app select,#app input[type="number"]').forEach(el=>{
+ if(!mtmIsYearField(el))return;el.dataset.mtmYearProcessed='1';
+ const trigger=document.createElement('button');trigger.type='button';trigger.className='mtm-year-trigger';trigger.textContent=el.value||'Select year';trigger.setAttribute('aria-label','Select year');
+ el.style.position='absolute';el.style.width='1px';el.style.height='1px';el.style.opacity='0';el.style.pointerEvents='none';el.style.margin='0';
+ el.insertAdjacentElement('afterend',trigger);trigger.addEventListener('click',()=>mtmYearModalOpen(el));
+ el.addEventListener('change',()=>{trigger.textContent=el.value||'Select year';});
+ });}
+const mtmYearObserver=new MutationObserver(()=>mtmUpgradeYearFields());
+mtmYearObserver.observe(document.getElementById('app'),{childList:true,subtree:true});
+mtmUpgradeYearFields();
 </script></body></html>
