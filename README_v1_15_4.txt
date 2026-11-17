@@ -1,0 +1,1 @@
+v1.15.4: Attendance History/Plans printable A4 landscape report with MTM logo, superintendent name/rank, chronological attendance table, ports, dates and inclusive onboard duration. All other v1.15.3 functions preserved.
