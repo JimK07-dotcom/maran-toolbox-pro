@@ -322,11 +322,11 @@ function wirePage(){
  const rows=wireRows.filter(r=>!wireFilter||r.vessel.toLowerCase().includes(wireFilter.toLowerCase()));
  const total=rows.reduce((a,r)=>a+wireNum(r.quantity_onboard),0);
  return `<section class="panel"><span class="eyebrow">COMPANY-WIDE EQUIPMENT REGISTER</span><h1>🔩 Wire Lubricators</h1><p class="muted">All fleets · Receipt and partial delivery tracking · Shared across authorized superintendents and the Marine Manager.</p>
- ${!signed?'<div class="notice warning">Sign in to Auto Sync to view or update the company-wide register. This module does not store unsynchronized entries.</div>':''}
- ${wireError?`<div class="notice warning">${esc(wireError)}</div>`:''}
+ ${!signed?'<div class="notice warning">Sign in to Auto Sync to view or update the company-wide register.</div>':''}
+ ${wireError?`<div class="notice warning">${esc(wireError)}</div>`:''}<div class="notice">${wirePending().length?`${wirePending().length} record(s) waiting to sync · Saved locally`:'No pending Wire Lubricator uploads'} · ${navigator.onLine?'Online':'Offline'}</div>
  <div class="stats"><div class="stat"><strong>${total}</strong><span class="small muted">Units onboard (listed records)</span></div><div class="stat"><strong>${rows.length}</strong><span class="small muted">Receipt records</span></div></div>
- ${button(wireBusy?'Loading…':'↻ Refresh register','wireLoad()','outline')}
- <hr class="divider"><h3>Record receipt onboard</h3><div class="grid2"><div class="field"><label>Vessel</label><select id="wireVessel">${opts}</select></div><div class="field"><label>Quantity received</label><input id="wireQty" type="number" min="1" step="1" placeholder="Units"></div><div class="field"><label>Port received</label><input id="wirePort" placeholder="Port"></div><div class="field"><label>Date received</label><input id="wireDate" type="date"></div></div><div class="field"><label>Remarks (optional)</label><input id="wireRemarks" placeholder="Additional information"></div>${button('Save receipt to Supabase','wireAddReceipt()','primary')}
+ ${button(wireBusy?'Loading…':'↻ Refresh register','wireLoad()','outline')}${button('↻ Sync pending uploads','wireFlushPending()','outline')}
+ <hr class="divider"><h3>Record receipt onboard</h3><div class="grid2"><div class="field"><label>Vessel</label><select id="wireVessel">${opts}</select></div><div class="field"><label>Quantity received</label><input id="wireQty" type="number" min="1" step="1" placeholder="Units"></div><div class="field"><label>Port received</label><input id="wirePort" placeholder="Port"></div><div class="field"><label>Date received</label><input id="wireDate" type="date"></div></div><div class="field"><label>Remarks (optional)</label><input id="wireRemarks" placeholder="Additional information"></div>${button('Save / Upload in Database','wireAddReceipt()','primary')}
  <hr class="divider"><h3>Vessel register</h3><div class="field"><label>Filter by vessel</label><input id="wireFilter" placeholder="Type vessel name" value="${esc(wireFilter)}" oninput="wireFilter=this.value;wireDrawRows()"></div><div id="wireRows">${wireTable(rows,yearCutoff)}</div>
  <p class="muted small">Three-year history is shown by default. Older records remain stored. Balances are calculated from receipt and delivery entries, not from the legacy delivery fields.</p></section>`;
 }
@@ -339,12 +339,13 @@ function wireTable(rows,cutoff){
  return `<div class="panel" style="margin:12px 0;padding:14px"><h3>${esc(r.vessel)} · ${available} onboard</h3><p class="small">Received: <b>${wireNum(r.quantity_received)}</b> on ${esc(r.date_received||'—')} at ${esc(r.port_received||'—')}<br>Delivered: <b>${wireNum(r.total_delivered)}</b> · Status: ${esc(r.status||'—')}</p>
  ${r.remarks?`<p class="small muted">${esc(r.remarks)}</p>`:''}
  ${deliveries.length?`<p class="small"><b>Delivery history</b></p>${deliveries.map(d=>`<p class="small">${wireNum(d.quantity)} unit(s) · ${esc(d.date_delivered)} · ${esc(d.port_delivered)}</p>`).join('')}`:''}
- ${available>0?`<details><summary>Record delivery / transfer</summary><div class="field"><label>Quantity delivered (max ${available})</label><input type="number" min="1" max="${available}" step="1" id="wq_${r.id}"></div><div class="field"><label>Port delivered</label><input id="wp_${r.id}"></div><div class="field"><label>Date delivered</label><input type="date" min="${esc(r.date_received||'')}" id="wd_${r.id}"></div><div class="field"><label>Remarks</label><input id="wr_${r.id}"></div>${button('Save delivery',`wireAddDelivery('${r.id}')`,'primary')}</details>`:''}</div>`;
+ ${available>0?`<details><summary>Record delivery / transfer</summary><div class="field"><label>Quantity delivered (max ${available})</label><input type="number" min="1" max="${available}" step="1" id="wq_${r.id}"></div><div class="field"><label>Port delivered</label><input id="wp_${r.id}"></div><div class="field"><label>Date delivered</label><input type="date" min="${esc(r.date_received||'')}" id="wd_${r.id}"></div><div class="field"><label>Remarks</label><input id="wr_${r.id}"></div>${button('Save / Upload in Database',`wireAddDelivery('${r.id}')`,'primary')}</details>`:''}</div>`;
  }).join('');
 }
 function wireDrawRows(){const el=$('wireRows');if(el)el.innerHTML=wireTable(wireRows.filter(r=>!wireFilter||r.vessel.toLowerCase().includes(wireFilter.toLowerCase())),new Date().getFullYear()-2)}
 async function wireLoad(){
  if(page!=='wire-lubricators'||!syncSession)return;
+ if(navigator.onLine&&wirePending().length)await wireFlushPending(true);
  wireBusy=true;wireError='';
  try{
   const [balances,deliveries]=await Promise.all([
@@ -354,20 +355,55 @@ async function wireLoad(){
  }catch(e){wireError='Unable to load shared register: '+e.message}
  finally{wireBusy=false;if(page==='wire-lubricators')$('app').innerHTML=wirePage()}
 }
+// Offline queue uses stable client-generated UUIDs to avoid duplicate uploads on retry.
+const WIRE_QUEUE_KEY='mtm-wire-pending-v1';
+function wirePending(){try{const a=JSON.parse(localStorage.getItem(WIRE_QUEUE_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return []}}
+function wireStoreQueue(a){localStorage.setItem(WIRE_QUEUE_KEY,JSON.stringify(a))}
+function wireQueue(type,record){const a=wirePending();a.push({type,record,user:syncSession.user.id,queued_at:now()});wireStoreQueue(a)}
+let wireFlushing=false;
+async function wireFlushPending(silent=false){
+ if(wireFlushing||!syncSession||!navigator.onLine)return;
+ wireFlushing=true;let sent=0,problem='';
+ try{
+  for(const item of wirePending()){
+   if(item.user!==syncSession.user.id)continue;
+   const table=item.type==='receipt'?'wire_lubricator_movements':'wire_lubricator_deliveries';
+   try{
+    // Upsert with ignore-duplicates is idempotent for retries after uncertain responses.
+    await syncAuth('/rest/v1/'+table+'?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(item.record)});
+    wireStoreQueue(wirePending().filter(x=>x.record.id!==item.record.id));sent++;
+   }catch(e){problem=e.message;break}
+  }
+ }finally{wireFlushing=false}
+ if(!silent){alert(problem?'Some uploads remain queued: '+problem:(sent?sent+' record(s) synchronized.':'No pending uploads for this account.'));if(page==='wire-lubricators')await wireLoad()}
+}
 async function wireAddReceipt(){
  if(!syncSession){alert('Sign in to Auto Sync first.');return}
  const vessel=$('wireVessel').value,quantity=Number($('wireQty').value),port=$('wirePort').value.trim(),day=$('wireDate').value,remarks=$('wireRemarks').value.trim();
  if(!FLEET.includes(vessel)||!Number.isSafeInteger(quantity)||quantity<=0||!port||!day){alert('Enter vessel, positive whole-number quantity, port and receipt date.');return}
- if(!navigator.onLine){alert('An internet connection is required to save shared receipts.');return}
- try{await syncAuth('/rest/v1/wire_lubricator_movements',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({vessel,quantity_received:quantity,port_received:port,date_received:day,remarks,entered_by:syncSession.user.id,updated_by:syncSession.user.id})});await wireLoad();alert('Receipt saved to shared register.')}catch(e){alert('Receipt not saved: '+e.message)}
+ const record={id:id(),vessel,quantity_received:quantity,port_received:port,date_received:day,remarks,entered_by:syncSession.user.id,updated_by:syncSession.user.id};
+ try{wireQueue('receipt',record)}catch(e){alert('Cannot save locally: '+e.message);return}
+ if(navigator.onLine)await wireFlushPending(true);
+ const pending=wirePending().some(x=>x.record.id===record.id);
+ alert(pending?'Saved locally. Waiting to sync when online.':'Receipt uploaded to database.');
+ if(!pending){await wireLoad()}else if(page==='wire-lubricators')$('app').innerHTML=wirePage();
 }
 async function wireAddDelivery(movementId){
- if(!syncSession||!navigator.onLine){alert('Sign in and connect to the internet.');return}
+ if(!syncSession){alert('Sign in to Auto Sync first.');return}
  const receipt=wireRows.find(r=>r.id===movementId);if(!receipt)return;
  const quantity=Number($('wq_'+movementId)?.value),port=$('wp_'+movementId)?.value.trim(),day=$('wd_'+movementId)?.value,remarks=$('wr_'+movementId)?.value.trim();
- if(!Number.isSafeInteger(quantity)||quantity<=0||quantity>wireNum(receipt.quantity_onboard)||!port||!day||day<receipt.date_received){alert('Check quantity, delivery port and date (not before receipt).');return}
+ const alreadyQueued=wirePending().filter(x=>x.type==='delivery'&&x.record.movement_id===movementId).reduce((n,x)=>n+Number(x.record.quantity||0),0);
+ if(!Number.isSafeInteger(quantity)||quantity<=0||quantity+alreadyQueued>wireNum(receipt.quantity_onboard)||!port||!day||day<receipt.date_received){alert('Check quantity, delivery port and date (not before receipt), including pending deliveries.');return}
  if(!confirm('Record delivery of '+quantity+' lubricator(s) from '+receipt.vessel+'?'))return;
- try{await syncAuth('/rest/v1/wire_lubricator_deliveries',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({movement_id:movementId,quantity,port_delivered:port,date_delivered:day,remarks,entered_by:syncSession.user.id})});await wireLoad();alert('Delivery saved to shared register.')}catch(e){alert('Delivery not saved: '+e.message)}
+ const record={id:id(),movement_id:movementId,quantity,port_delivered:port,date_delivered:day,remarks,entered_by:syncSession.user.id};
+ try{wireQueue('delivery',record)}catch(e){alert('Cannot save locally: '+e.message);return}
+ if(navigator.onLine)await wireFlushPending(true);
+ const pending=wirePending().some(x=>x.record.id===record.id);
+ alert(pending?'Saved locally. Waiting to sync when online.':'Delivery uploaded to database.');
+ if(!pending)await wireLoad();else if(page==='wire-lubricators')$('app').innerHTML=wirePage();
 }
+window.addEventListener('online',()=>{if(syncSession&&wirePending().length)wireFlushPending(true).then(()=>{if(page==='wire-lubricators')wireLoad()})});
+// All date inputs use the browser's native calendar. Clicking the field opens it where supported.
+document.addEventListener('click',e=>{const el=e.target;if(el instanceof HTMLInputElement&&el.type==='date'&&typeof el.showPicker==='function'){try{el.showPicker()}catch{}}});
 
 </script></body></html>

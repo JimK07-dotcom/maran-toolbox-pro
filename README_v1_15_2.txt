@@ -1,0 +1,1 @@
+v1.15.2: Calendar pickers for date fields; Wire Lubricators save button wording; offline receipt/delivery queue with retry and stable UUIDs. Pending records are stored in this browser only until synchronized. Other modules may have different offline behavior. Live Supabase test required.
